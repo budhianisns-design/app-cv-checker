@@ -100,20 +100,28 @@ def extract_text_from_pdf(uploaded_file):
         if extracted: text += extracted
     return text
 
+# --- INJEKSI CSS UNTUK SHADOW LOGO ---
+st.markdown("""
+<style>
+/* Efek shadow/bayangan halus untuk gambar logo */
+[data-testid="stImage"] img {
+    border-radius: 8px; /* Bikin ujung kotaknya agak melengkung manis */
+    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.6); /* Efek shadow hitam transparan */
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- TAMPILAN UTAMA WEB ---
-col1, col2 = st.columns([1, 8]) # Membagi layar jadi 2 kolom (kiri kecil, kanan lebar)
+col1, col2 = st.columns([1, 5]) # Kolom kiri buat logo, kanan buat judul
 
 with col1:
-    # Sementara gue pakai logo inisial "E" yang warnanya udah dicocokin sama tema Navy-Gold.
-    # Kalau lo mau pakai logo asli Elabram, tinggal ganti URL di bawah ini sama link gambar logonya.
-    # Atau upload file logo aslinya ke GitHub lo, lalu ganti jadi: st.image("logo_elabram.png", width=70)
-    st.image("https://ui-avatars.com/api/?name=Elabram&background=FBBF24&color=0F172A&size=128&bold=true", width=70)
+    # Memanggil file gambar yang barusan lo upload
+    st.image("logo_elabram.jpg", width=180)
 
 with col2:
-    # CSS ini biar posisi judulnya sejajar rapi dengan tengah-tengah logo
-    st.markdown("<h1 style='margin-top: -15px;'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='margin-top: -10px;'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 
-st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 st.markdown("---")
 
 # 1. JOB DESCRIPTION SECTION
