@@ -113,8 +113,8 @@ elif uploaded_cvs and jd_text:
             """
             
             sukses = False
-            # Sistem Antre (Retry) maksimal 3 kali jika kena limit Google
-            for attempt in range(3):
+            # Sistem Antre (Retry) maksimal 5 kali jika kena limit Google
+            for attempt in range(5):
                 try:
                     response = model.generate_content(
                         prompt,
@@ -138,7 +138,7 @@ elif uploaded_cvs and jd_text:
                     error_msg = str(e)
                     # Jika error karena Limit (429) dari versi gratisan Google
                     if "429" in error_msg or "quota" in error_msg.lower():
-                        status_text.text(f"⏳ Ups, server Google membatasi versi gratis. Otomatis istirahat 60 detik sebelum lanjut (CV {index+1})...")
+                        status_text.text(f"⏳ Jeda santai... Google minta istirahat 60 detik (Percobaan {attempt+1}/5)...")
                         time.sleep(60) # Tunggu 1 menit lalu coba loop lagi
                     else:
                         st.session_state.hasil_analisis.append({
@@ -154,11 +154,11 @@ elif uploaded_cvs and jd_text:
                 st.session_state.hasil_analisis.append({
                     "name": cv_file.name,
                     "score": "0",
-                    "summary": "Gagal diproses karena limit API Google terlalu sering (Versi Free).",
+                    "summary": "Gagal diproses karena limit harian API Google (Versi Free) sepertinya sudah habis. Coba lagi besok atau gunakan API Key dari akun Google lain.",
                     "cleaned_cv": "Gagal dirapikan."
                 })
 
-            time.sleep(6) # Jeda kita naikkan jadi 6 detik per CV biar makin aman dari tilang Google
+            time.sleep(15) # WAKTU JEDA DIPERPANJANG JADI 15 DETIK agar Google tidak mendeteksi spam
             progress_bar.progress((index + 1) / len(uploaded_cvs))
             
         status_text.text("✅ Analisis Semua CV Selesai!")
