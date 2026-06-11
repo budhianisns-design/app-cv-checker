@@ -151,19 +151,23 @@ elif uploaded_cvs and jd_text:
         st.markdown("---")
         st.header("📊 Hasil Pengecekan")
         
-        for res in results:
+      # --- MENAMPILKAN HASIL DI LAYAR WEB ---
+        st.markdown("---")
+        st.header("📊 Hasil Pengecekan")
+        
+        # Gunakan enumerate untuk bikin ID unik (i)
+        for i, res in enumerate(results):
             with st.expander(f"📋 {res['name']} - Kecocokan: {res['score']}%"):
                 st.write(f"**Persentase:** {res['score']}%")
                 st.write(f"**Alasan:** {res['summary']}")
                 
-                # Generate PDF secara instant untuk didownload
-                pdf_data = create_pdf(res['name'], res['score'], res['summary'], res['cleaned_cv'])
+                # Generate PDF (dibungkus str() jaga-jaga kalau formatnya beda)
+                pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['cleaned_cv']))
                 
                 st.download_button(
                     label=f"📥 Download PDF Laporan {res['name']}",
                     data=pdf_data,
                     file_name=f"Laporan_ATS_{res['name']}.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    key=f"download_btn_{i}"  # <--- INI KUNCI PENYELAMATNYA
                 )
-else:
-    st.info("💡 Tolong isi Job Description dan upload minimal 1 CV dulu untuk memulai.")
