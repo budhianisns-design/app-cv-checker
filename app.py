@@ -111,26 +111,38 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- INJEKSI CSS UNTUK SHADOW LOGO, TEXT, & BACKGROUND NAVY BLUE ---
+# --- INJEKSI CSS UNTUK TEMA NAVY-WHITE-BLACK BALANCED ---
 st.markdown("""
 <style>
-/* Memaksa background utama web menjadi Navy Blue murni dari gambar lo */
+/* 1. Paksa background utama web menjadi Navy Blue murni */
 .stApp {
     background-color: #000080 !important;
 }
 
-/* Memaksa semua warna teks judul dan subheader menjadi putih terang agar kontras */
+/* 2. Paksa semua teks judul, subheader, dan label section menjadi putih terang */
 .stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp span, .stApp label, .navy-title {
     color: #FFFFFF !important;
 }
 
-/* Membuat kotak input teks dan drop-down menjadi sedikit abu-abu gelap agar teksnya terbaca */
-textarea, [data-baseweb="select"] {
-    background-color: #1E293B !important;
-    color: #FFFFFF !important;
+/* 3. Ubah kotak input teks dan drop-down menjadi warna putih dengan teks hitam */
+textarea, [data-baseweb="select"], [data-baseweb="select"] div, [data-testid="stHeaderBlock"], [data-baseweb="popover"] {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+}
+/* Memastikan text di dalam text area/input beneran hitam pekat */
+textarea, [data-baseweb="select"] span {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
 }
 
-/* Efek shadow tebal dan halus untuk kotak logo putih Elabram */
+/* 4. Paksa semua teks di dalam tombol (Button biasa & Button Upload) menjadi warna hitam */
+button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] button {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    font-weight: bold !important;
+}
+
+/* 5. Efek shadow tebal dan halus untuk kotak logo putih Elabram */
 [data-testid="stImage"] img {
     border-radius: 12px;
     box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.8);
@@ -146,6 +158,25 @@ textarea, [data-baseweb="select"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# --- TAMPILAN UTAMA WEB ---
+col1, col2 = st.columns([1, 4]) # Kolom kiri buat logo, kanan buat judul
+
+with col1:
+    # Trik Anti-Error pemanggilan file lokal logo Elabram
+    try:
+        st.image("logo elabram.jpg", width=200)
+    except:
+        try:
+            st.image("logo_elabram.jpg", width=200)
+        except:
+            st.error("File logo belum ter-upload di GitHub.")
+
+with col2:
+    st.markdown("<h1 class='navy-title'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
+
+st.divider()
 
 # 1. JOB DESCRIPTION SECTION
 st.header("1. Job Description")
