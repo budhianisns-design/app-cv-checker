@@ -27,38 +27,25 @@ class CVReportPDF(FPDF):
         self.cell(0, 10, f'Halaman {self.page_no()}', 0, 0, 'C')
 
 def create_pdf(candidate_name, score, summary, cleaned_cv):
+    # --- PEMBERSIH KARAKTER KHUSUS ---
+    def clean_text(text):
+        if not isinstance(text, str): return ""
+        # Ubah simbol fancy jadi standar
+        reps = {'•': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '\n': '\n'}
+        for k, v in reps.items(): text = text.replace(k, v)
+        # Paksa buang sisa karakter yang gak dikenali PDF (seperti emoji)
+        return text.encode('latin-1', 'ignore').decode('latin-1')
+    
+    # Bersihkan teks sebelum dicetak
+    summary = clean_text(summary)
+    cleaned_cv = clean_text(cleaned_cv)
+    # ----------------------------------
+
     pdf = CVReportPDF()
     
     # Halaman 1: Skor & Summary
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 20)
-    pdf.set_text_color(62, 39, 35) # Dark Brown
-    pdf.cell(0, 15, f"Kandidat: {candidate_name}", 0, 1, 'L')
-    
-    pdf.set_font('Arial', 'B', 16)
-    pdf.set_text_color(139, 90, 43)
-    pdf.cell(0, 12, f"Tingkat Kecocokan: {score}%", 0, 1, 'L')
-    pdf.ln(5)
-    
-    pdf.set_font('Arial', 'B', 12)
-    pdf.set_text_color(62, 39, 35)
-    pdf.cell(0, 10, "Summary Penjelasan Kecocokan:", 0, 1, 'L')
-    
-    pdf.set_font('Arial', '', 11)
-    pdf.set_text_color(0, 0, 0)
-    pdf.multi_cell(0, 6, summary)
-    
-    # Halaman 2: CV Rapi & Detail
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 16)
-    pdf.set_text_color(62, 39, 35)
-    pdf.cell(0, 12, "Profil CV Kandidat (Rapi & Detail)", 0, 1, 'L')
-    pdf.ln(5)
-    
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 5, cleaned_cv)
-    
-    return pdf.output(dest='S').encode('latin1')
+# ... (biarkan sisa kodenya ke bawah tetap sama) ...
 
 # --- FUNGSI EKSTRAKSI PDF ---
 def extract_text_from_pdf(uploaded_file):
