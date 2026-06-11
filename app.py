@@ -127,7 +127,7 @@ def create_pdf(candidate_name, score, summary, missing_skills, cleaned_cv):
     pdf.ln(5)
     
     pdf.set_font('Arial', 'B', 12)
-    pdf.set_text_color(62, 39, 35) # FIX: Memperbaiki error argumen penulisan warna
+    pdf.set_text_color(62, 39, 35)
     pdf.cell(0, 8, "Summary Kecocokan:", 0, 1, 'L')
     pdf.set_font('Arial', '', 11)
     pdf.set_text_color(0, 0, 0)
@@ -180,4 +180,12 @@ st.header("1. Job Description")
 selected_template = st.selectbox("Pilih Template Posisi:", list(JD_TEMPLATES.keys()))
 jd_default_text = JD_TEMPLATES[selected_template]
 
-jd_
+jd_file = st.file_uploader("Atau Upload dokumen Job Description (Format PDF)", type=["pdf"])
+if jd_file is not None:
+    jd_default_text = extract_text_from_pdf(jd_file)
+
+# FIX: Di sini kemarin ada typo 'jd_' menggantung yang bikin error, sekarang sudah bersih total!
+jd_text = st.text_area("Detail Job Description & Requirements:", value=jd_default_text, height=150)
+
+st.header("2. Upload CV Kandidat")
+uploaded_cvs = st.file_uploader("Pilih file-file CV (Format PDF
