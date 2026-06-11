@@ -5,7 +5,7 @@ import json
 import pandas as pd
 from fpdf import FPDF
 
-# --- CONFIG LAYOUT ---
+# --- CONFIG LAYOUT WIDE ---
 st.set_page_config(page_title="CV Matcher - Elabram", layout="wide")
 
 # --- SETUP API GEMINI ---
@@ -13,7 +13,7 @@ GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# --- TEMPLATE JD ---
+# --- DATABASE TEMPLATE JOB DESCRIPTION ---
 JD_TEMPLATES = {
     "Custom / Upload Manual": "",
     "Digital Marketing Specialist": "Mencari Digital Marketing Specialist. Syarat: Pengalaman minimal 2 tahun, menguasai Meta Ads, Google Ads, SEO, SEM, dan Google Analytics.",
@@ -21,41 +21,24 @@ JD_TEMPLATES = {
     "Sales Executive / Manager": "Dibutuhkan Sales dengan pengalaman B2B minimal 4 tahun. Target-oriented, memiliki skill komunikasi & negosiasi tingkat tinggi."
 }
 
-# --- INJEKSI CSS ---
-st.markdown("""
-<style>
-.stApp { background-color: #000080 !important; }
-.stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp span, .stApp label, .navy-title, .stApp li, [data-testid="stExpander"] div, [data-testid="stText"] { 
-    color: #FFFFFF !important; 
-}
-textarea, [data-baseweb="select"], [data-baseweb="select"] div, [data-testid="stHeaderBlock"], [data-baseweb="popover"] {
-    background-color: #FFFFFF !important; color: #000000 !important;
-}
-textarea, [data-baseweb="select"] span { color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
-button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] button, .stDownloadButton button {
-    color: #000000 !important; background-color: #FFFFFF !important; font-weight: bold !important;
-}
-.stDownloadButton button *, .stButton button *, .stButton p, button div { color: #000000 !important; font-weight: bold !important; }
-[data-testid="stFileUploaderDropzone"] button *, [data-testid="stFileUploaderDropzone"] div, [data-testid="stFileUploaderDropzone"] span { color: #000000 !important; }
-[data-testid="stImage"] img { border-radius: 12px; box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.8); background-color: #FFFFFF; padding: 8px; }
-.navy-title { font-weight: 800; font-size: 3rem; margin-top: -15px; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- HEADER APP ---
+# --- HEADER TAMPILAN UTAMA ---
 col1, col2 = st.columns([1, 4])
 with col1:
-    try: st.image("logo elabram.jpg", width=200)
+    try:
+        st.image("logo elabram.jpg", width=180)
     except:
-        try: st.image("logo_elabram.jpg", width=200)
-        except: st.error("Logo tidak ditemukan.")
+        try:
+            st.image("logo_elabram.jpg", width=180)
+        except:
+            st.write("Logo Elabram")
+
 with col2:
-    st.markdown("<h1 class='navy-title'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.title("CV Matcher")
     st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 
 st.divider()
 
-# --- KLAS UNTUK GENERATE PDF ---
+# --- FUNGSI PARSING & GENERATOR PDF ---
 class CVReportPDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -79,7 +62,36 @@ def create_pdf(candidate_name, score, summary, missing_skills, cleaned_cv):
     pdf = CVReportPDF()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 20)
-    pdf.set_text_color(62, 39, 35)
     pdf.cell(0, 15, f"Kandidat: {candidate_name}", 0, 1, 'L')
     pdf.set_font('Arial', 'B', 16)
-    pdf.set_text_color(139, 90, 43)
+    pdf.cell(0, 12, f"Tingkat Kecocokan: {score}%", 0, 1, 'L')
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, "Summary Kecocokan:", 0, 1, 'L')
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 6, summary)
+    pdf.ln(3)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, "Requirement yang TIDAK Ditemukan di CV (Missing Skills):", 0, 1, 'L')
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 6, missing_skills)
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 12, "Profil CV Kandidat (Rapi & Detail)", 0, 1, 'L')
+    pdf.ln(5)
+    pdf.set_font('Arial', '', 10)
+    pdf.multi_cell(0, 5, cleaned_cv)
+    return pdf.output(dest='S').encode('latin1')
+
+def extract_text_from_pdf(uploaded_file):
+    pdf_reader = PyPDF2.PdfReader(uploaded_file)
+    text = ""
+    for page in pdf_reader.pages:
+        extracted = page.extract_text()
+        if extracted: text += extracted
+    return text
+
+# --- CACHING PROSES AI ---
+@st.cache_data(show_spinner=False)
+def panggil_ai_gemini(jd, cv):
+    prompt = f"Bandingkan JD dengan CV berikut. JD: {jd} \\n CV: {cv} \\n Berikan respons MURNI format JSON persis seperti struktur ini: {{\"score\": \"85\", \"summary\": \"alasan cocok\", \"missing_skills\": \"kekurangan di cv\", \"cleaned_cv\": \"isi cv rapi\"}}"
