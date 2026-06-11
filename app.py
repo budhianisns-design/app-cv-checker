@@ -121,9 +121,8 @@ st.markdown("""
     background-color: #FFFFFF;
     padding: 5px;
 }
-/* Memaksa judul text berwarna putih agar sangat kontras di background Navy */
+/* Styling khusus judul (warnanya dibikin otomatis ngikutin tema biar gak hilang) */
 .navy-title {
-    color: #FFFFFF !important;
     font-weight: 800;
     font-size: 3rem;
     margin-top: -15px;
@@ -135,8 +134,14 @@ st.markdown("""
 col1, col2 = st.columns([1, 4]) # Kolom kiri buat logo, kanan buat judul
 
 with col1:
-    # Menggunakan link URL langsung yang dijamin 100% anti-gagal load
-    st.image("https://i.postimg.cc/QdMhpndS/logo-elabram.jpg", width=200)
+    # Trik Anti-Error: Coba cari file pakai spasi dulu, kalau gak ada cari yang pakai garis bawah
+    try:
+        st.image("logo elabram.jpg", width=200)
+    except:
+        try:
+            st.image("logo_elabram.jpg", width=200)
+        except:
+            st.error("File logo belum ter-upload di GitHub.")
 
 with col2:
     st.markdown("<h1 class='navy-title'>CV Matcher</h1>", unsafe_allow_html=True)
