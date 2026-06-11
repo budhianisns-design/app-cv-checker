@@ -111,15 +111,35 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- INJEKSI CSS UNTUK SHADOW LOGO & TEXT ---
+st.markdown("""
+<style>
+/* Efek shadow tebal dan halus untuk kotak logo putih */
+[data-testid="stImage"] img {
+    border-radius: 12px;
+    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.7);
+    background-color: #FFFFFF;
+    padding: 5px;
+}
+/* Memaksa judul text berwarna putih agar sangat kontras di background Navy */
+.navy-title {
+    color: #FFFFFF !important;
+    font-weight: 800;
+    font-size: 3rem;
+    margin-top: -15px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- TAMPILAN UTAMA WEB ---
-col1, col2 = st.columns([1, 5]) # Kolom kiri buat logo, kanan buat judul
+col1, col2 = st.columns([1, 4]) # Kolom kiri buat logo, kanan buat judul
 
 with col1:
-    # Memanggil file gambar yang barusan lo upload
-    st.image("logo_elabram.jpg", width=180)
+    # Menggunakan link URL langsung yang dijamin 100% anti-gagal load
+    st.image("https://i.postimg.cc/QdMhpndS/logo-elabram.jpg", width=200)
 
 with col2:
-    st.markdown("<h1 style='margin-top: -10px;'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='navy-title'>CV Matcher</h1>", unsafe_allow_html=True)
     st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 
 st.markdown("---")
