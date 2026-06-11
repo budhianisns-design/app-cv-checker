@@ -25,7 +25,6 @@ class CVReportPDF(FPDF):
         self.cell(0, 10, f'Halaman {self.page_no()}', 0, 0, 'C')
 
 def create_pdf(candidate_name, score, summary, cleaned_cv):
-    # Pembersih Karakter agar tidak Error saat cetak PDF
     def clean_text(text):
         if not isinstance(text, str): return ""
         reps = {'•': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '\n': '\n'}
@@ -38,7 +37,6 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
 
     pdf = CVReportPDF()
     
-    # Halaman 1
     pdf.add_page()
     pdf.set_font('Arial', 'B', 20)
     pdf.set_text_color(62, 39, 35)
@@ -57,7 +55,6 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
     pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, summary)
     
-    # Halaman 2
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(62, 39, 35)
@@ -69,26 +66,37 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
     
     return pdf.output(dest='S').encode('latin1')
 
-# --- FUNGSI BACA PDF ---
 def extract_text_from_pdf(uploaded_file):
     pdf_reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
     for page in pdf_reader.pages:
-        text += page.extract_text()
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted
     return text
 
 # --- TAMPILAN UTAMA WEB ---
-st.title("🗂️ EarthTone ATS - CV Matcher")
-st.subheader("Cek kecocokan CV kandidat dengan Requirement posisi")
+st.title("🗂️ CV Matcher - Automation")
+st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 st.markdown("---")
 
-st.header("1. Ketentuan Lowongan")
-jd_text = st.text_area("Paste Job Description & Requirements di sini:", height=200)
+# 1. JOB DESCRIPTION SECTION
+st.header("1. Job Description")
+jd_file = st.file_uploader("Upload dokumen Job Description (Opsional, format PDF)", type=["pdf"])
 
+# Otomatis isi kotak teks jika file diupload
+jd_default_text = ""
+if jd_file is not None:
+    jd_default_text = extract_text_from_pdf(jd_file)
+    st.success("Teks Job Description berhasil diekstrak! Silakan cek/edit di kotak bawah.")
+
+jd_text = st.text_area("Detail Job Description & Requirements:", value=jd_default_text, height=150, 
+                       placeholder="Ketik manual atau upload dokumen PDF di atas...")
+
+# 2. CV UPLOAD SECTION
 st.header("2. Upload CV Kandidat")
 uploaded_cvs = st.file_uploader("Pilih file-file CV (Format PDF, Maksimal 30 file)", type=["pdf"], accept_multiple_files=True)
 
-# Memori Penyimpanan agar Data tidak hilang saat Refresh/Download
 if 'proses_selesai' not in st.session_state:
     st.session_state.proses_selesai = False
     st.session_state.hasil_analisis = []
@@ -97,13 +105,13 @@ if 'proses_selesai' not in st.session_state:
 if uploaded_cvs and len(uploaded_cvs) > 30:
     st.error("🚨 Maksimal 30 CV sekali cek.")
 elif uploaded_cvs and jd_text:
-    if st.button("Mulai Proses Analisis 🚀"):
-        st.session_state.hasil_analisis = [] # Kosongkan memori lama
+    if st.button("Mulai Pengecekan 🚀"):
+        st.session_state.hasil_analisis = [] 
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         for index, cv_file in enumerate(uploaded_cvs):
-            status_text.text(f"Sedang menganalisis ({index+1}/{len(uploaded_cvs)}): {cv_file.name}...")
+            status_text.text(f"Menganalisis ({index+1}/{len(uploaded_cvs)}): {cv_file.name}...")
             
             cv_text = extract_text_from_pdf(cv_file)
             prompt = f"""Anda adalah sistem ATS. Bandingkan JD dengan CV berikut.
@@ -113,33 +121,25 @@ elif uploaded_cvs and jd_text:
             """
             
             sukses = False
-            # Sistem Antre (Retry) maksimal 5 kali jika kena limit Google
             for attempt in range(5):
                 try:
-                    response = model.generate_content(
-                        prompt,
-                        generation_config={"response_mime_type": "application/json"}
-                    )
-                    
-                    # Pembersihan Teks JSON yang kebal error copy-paste
-                    md_tick = chr(96) * 3  # Menghasilkan simbol backtick
+                    response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                    md_tick = chr(96) * 3 
                     raw_text = response.text.strip()
                     raw_text = raw_text.replace(f"{md_tick}json", "").replace(md_tick, "").strip()
                     
                     res_json = json.loads(raw_text)
                     res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
                     
-                    # Simpan ke Memori
                     st.session_state.hasil_analisis.append(res_json)
                     sukses = True
-                    break # Berhasil, keluar dari loop antrean
+                    break 
                     
                 except Exception as e:
                     error_msg = str(e)
-                    # Jika error karena Limit (429) dari versi gratisan Google
                     if "429" in error_msg or "quota" in error_msg.lower():
                         status_text.text(f"⏳ Jeda santai... Google minta istirahat 60 detik (Percobaan {attempt+1}/5)...")
-                        time.sleep(60) # Tunggu 1 menit lalu coba loop lagi
+                        time.sleep(60) 
                     else:
                         st.session_state.hasil_analisis.append({
                             "name": cv_file.name,
@@ -147,39 +147,42 @@ elif uploaded_cvs and jd_text:
                             "summary": f"Error memproses AI: {error_msg}",
                             "cleaned_cv": "Gagal dirapikan."
                         })
-                        sukses = True # Error di luar limit, anggap selesai biar lanjut ke CV lain
+                        sukses = True 
                         break
             
             if not sukses:
                 st.session_state.hasil_analisis.append({
                     "name": cv_file.name,
                     "score": "0",
-                    "summary": "Gagal diproses karena limit harian API Google (Versi Free) sepertinya sudah habis. Coba lagi besok atau gunakan API Key dari akun Google lain.",
+                    "summary": "Gagal diproses karena limit harian API Google (Versi Free) habis.",
                     "cleaned_cv": "Gagal dirapikan."
                 })
 
-            time.sleep(15) # WAKTU JEDA DIPERPANJANG JADI 15 DETIK agar Google tidak mendeteksi spam
+            time.sleep(15) 
             progress_bar.progress((index + 1) / len(uploaded_cvs))
             
-        status_text.text("✅ Analisis Semua CV Selesai!")
+        status_text.text("✅ Proses Semua CV Selesai!")
         st.session_state.proses_selesai = True
 
-# --- LOGIKA TAMPILAN HASIL (Di luar Loop Proses) ---
+# --- TAMPILAN HASIL ---
 if st.session_state.proses_selesai:
     st.markdown("---")
-    st.header("📊 Hasil Pengecekan")
+    st.header("📊 Rekap Hasil Matcher")
+    
+    # Otomatis mengurutkan dari skor paling tinggi
+    st.session_state.hasil_analisis.sort(key=lambda x: int(x.get('score', 0)) if str(x.get('score', '0')).isdigit() else 0, reverse=True)
     
     for i, res in enumerate(st.session_state.hasil_analisis):
-        with st.expander(f"📋 {res['name']} - Kecocokan: {res['score']}%"):
-            st.write(f"**Persentase:** {res['score']}%")
-            st.write(f"**Alasan:** {res['summary']}")
+        with st.expander(f"📋 {res['name']} - Skor: {res['score']}%"):
+            st.write(f"**Persentase Kecocokan:** {res['score']}%")
+            st.write(f"**Ringkasan AI:** {res['summary']}")
             
             pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['cleaned_cv']))
             
             st.download_button(
-                label=f"📥 Download PDF Laporan {res['name']}",
+                label=f"📥 Download Report {res['name']}.pdf",
                 data=pdf_data,
-                file_name=f"Laporan_{res['name']}.pdf",
+                file_name=f"Report_CV_Matcher_{res['name']}.pdf",
                 mime="application/pdf",
                 key=f"dl_btn_{i}"
             )
