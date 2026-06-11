@@ -1,6 +1,6 @@
 [theme]
-primaryColor = "#8B5A2B"
-backgroundColor = "#F5F5DC"
-secondaryBackgroundColor = "#EAE0C8"
-textColor = "#3E2723"
+primaryColor = "#FBBF24" # Warna tombol aksen Gold/Kuning Premium
+backgroundColor = "#0F172A" # Warna background Navy (Biru Gelap Modern)
+secondaryBackgroundColor = "#1E293B" # Warna Navy agak terang untuk kotak input/sidebar
+textColor = "#F8FAFC" # Warna teks putih terang biar kontras dan gampang dibaca
 font = "sans serif"
