@@ -123,9 +123,23 @@ elif uploaded_cvs and jd_text:
             """
             
             try:
-                # 3. Panggil Gemini AI
-                response = model.generate_content(prompt)
-                res_json = json.loads(response.text.strip())
+                # 3. Panggil Gemini AI dengan Mode Paksa JSON
+                response = model.generate_content(
+                    prompt,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                
+                # Pembersih Teks Ekstra (Jaga-jaga kalau AI bandel)
+                raw_text = response.text.strip()
+                if raw_text.startswith("```json"): 
+                    raw_text = raw_text[7:]
+                elif raw_text.startswith("```"): 
+                    raw_text = raw_text[3:]
+                if raw_text.endswith("```"): 
+                    raw_text = raw_text[:-3]
+                
+                # Parsing ke format JSON
+                res_json = json.loads(raw_text.strip())
                 
                 # Simpan Hasil
                 res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
