@@ -24,19 +24,56 @@ JD_TEMPLATES = {
 # --- INJEKSI CSS ---
 st.markdown("""
 <style>
-.stApp { background-color: #000080 !important; }
-.stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp span, .stApp label, .navy-title { color: #FFFFFF !important; }
+/* 1. Paksa background utama web menjadi Navy Blue murni */
+.stApp { 
+    background-color: #000080 !important; 
+}
+
+/* 2. Paksa SEMUA teks, paragraph, list item, label, expander header, dan teks di dalam bodi expander menjadi putih */
+.stApp h1, .stApp h2, .stApp h3, .stApp p, .stApp span, .stApp label, .navy-title, .stApp li, [data-testid="stExpander"] div, [data-testid="stText"] { 
+    color: #FFFFFF !important; 
+}
+
+/* 3. Ubah kotak input teks dan drop-down menjadi warna putih dengan teks hitam */
 textarea, [data-baseweb="select"], [data-baseweb="select"] div, [data-testid="stHeaderBlock"], [data-baseweb="popover"] {
-    background-color: #FFFFFF !important; color: #000000 !important;
+    background-color: #FFFFFF !important; 
+    color: #000000 !important;
 }
-textarea, [data-baseweb="select"] span { color: #000000 !important; -webkit-text-fill-color: #000000 !important; }
-button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] button {
-    color: #000000 !important; background-color: #FFFFFF !important; font-weight: bold !important;
+textarea, [data-baseweb="select"] span { 
+    color: #000000 !important; 
+    -webkit-text-fill-color: #000000 !important; 
 }
-.stButton button *, .stButton p, button div { color: #000000 !important; font-weight: bold !important; }
-[data-testid="stFileUploaderDropzone"] button *, [data-testid="stFileUploaderDropzone"] div, [data-testid="stFileUploaderDropzone"] span { color: #000000 !important; }
-[data-testid="stImage"] img { border-radius: 12px; box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.8); background-color: #FFFFFF; padding: 8px; }
-.navy-title { font-weight: 800; font-size: 3rem; margin-top: -15px; }
+
+/* 4. Paksa semua teks di dalam tombol (Button biasa, Button Upload, & Button Download/Export) menjadi warna hitam */
+button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] button, .stDownloadButton button {
+    color: #000000 !important; 
+    background-color: #FFFFFF !important; 
+    font-weight: bold !important;
+}
+/* Memastikan teks di dalam tombol download / export beneran hitam pekat */
+.stDownloadButton button *, .stButton button *, .stButton p, button div { 
+    color: #000000 !important; 
+    font-weight: bold !important; 
+}
+
+/* 5. Teks uploader */
+[data-testid="stFileUploaderDropzone"] button *, [data-testid="stFileUploaderDropzone"] div, [data-testid="stFileUploaderDropzone"] span { 
+    color: #000000 !important; 
+}
+
+/* 6. Efek shadow tebal dan halus untuk kotak logo putih Elabram */
+[data-testid="stImage"] img { 
+    border-radius: 12px; 
+    box-shadow: 0px 10px 25px rgba(0, 0, 0, 0.8); 
+    background-color: #FFFFFF; 
+    padding: 8px; 
+}
+
+.navy-title { 
+    font-weight: 800; 
+    font-size: 3rem; 
+    margin-top: -15px; 
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -53,7 +90,7 @@ with col2:
 
 st.divider()
 
-# --- FUNGSI PARSING & PDF GENERATOR ---
+# --- KLAS UNTUK GENERATE PDF ---
 class CVReportPDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -73,29 +110,37 @@ def create_pdf(candidate_name, score, summary, missing_skills, cleaned_cv):
         for k, v in reps.items(): text = text.replace(k, v)
         return text.encode('latin-1', 'ignore').decode('latin-1')
     
-    summary, missing_skills, cleaned_cv, candidate_name = clean_text(summary), clean_text(missing_skills), clean_text(cleaned_cv), clean_text(candidate_name)
+    summary = clean_text(summary)
+    missing_skills = clean_text(missing_skills)
+    cleaned_cv = clean_text(cleaned_cv)
+    candidate_name = clean_text(candidate_name)
+    
     pdf = CVReportPDF()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 20)
     pdf.set_text_color(62, 39, 35)
     pdf.cell(0, 15, f"Kandidat: {candidate_name}", 0, 1, 'L')
+    
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(139, 90, 43)
     pdf.cell(0, 12, f"Tingkat Kecocokan: {score}%", 0, 1, 'L')
     pdf.ln(5)
+    
     pdf.set_font('Arial', 'B', 12)
-    pdf.set_text_color(62, 39,  brown = 35)
+    pdf.set_text_color(62, 39, 35) # FIX: Memperbaiki error argumen penulisan warna
     pdf.cell(0, 8, "Summary Kecocokan:", 0, 1, 'L')
     pdf.set_font('Arial', '', 11)
     pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, summary)
     pdf.ln(3)
+    
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(200, 50, 50)
     pdf.cell(0, 8, "Requirement yang TIDAK Ditemukan di CV (Missing Skills):", 0, 1, 'L')
     pdf.set_font('Arial', '', 11)
     pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, missing_skills)
+    
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(62, 39, 35)
@@ -113,7 +158,7 @@ def extract_text_from_pdf(uploaded_file):
         if extracted: text += extracted
     return text
 
-# --- CACHING AI BIAR GAK TIMEOUT ---
+# --- CACHING AI ---
 @st.cache_data(show_spinner=False)
 def panggil_ai_gemini(jd, cv):
     prompt = f"""Anda adalah sistem ATS HRD yang ketat. Bandingkan JD dengan CV berikut.
@@ -135,64 +180,4 @@ st.header("1. Job Description")
 selected_template = st.selectbox("Pilih Template Posisi:", list(JD_TEMPLATES.keys()))
 jd_default_text = JD_TEMPLATES[selected_template]
 
-jd_file = st.file_uploader("Atau Upload dokumen Job Description (Format PDF)", type=["pdf"])
-if jd_file is not None:
-    jd_default_text = extract_text_from_pdf(jd_file)
-
-jd_text = st.text_area("Detail Job Description & Requirements:", value=jd_default_text, height=150)
-
-st.header("2. Upload CV Kandidat")
-uploaded_cvs = st.file_uploader("Pilih file-file CV (Format PDF)", type=["pdf"], accept_multiple_files=True)
-
-if 'hasil_analisis' not in st.session_state:
-    st.session_state.hasil_analisis = []
-    st.session_state.proses_selesai = False
-
-if uploaded_cvs and jd_text:
-    if st.button("Mulai Pengecekan 🚀"):
-        st.session_state.hasil_analisis = []
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
-        for index, cv_file in enumerate(uploaded_cvs):
-            status_text.text(f"Menganalisis ({index+1}/{len(uploaded_cvs)}): {cv_file.name}...")
-            cv_text = extract_text_from_pdf(cv_file)
-            
-            # Panggil fungsi AI yang sudah di-cache (Tanpa delay sleep lama)
-            res_json = panggil_ai_gemini(jd_text, cv_text)
-            res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
-            st.session_state.hasil_analisis.append(res_json)
-            
-            progress_bar.progress((index + 1) / len(uploaded_cvs))
-            
-        status_text.text("✅ Proses Semua CV Selesai!")
-        st.session_state.proses_selesai = True
-
-# --- REKAP HASIL ---
-if st.session_state.proses_selesai and st.session_state.hasil_analisis:
-    st.markdown("---")
-    st.header("📊 Rekap Hasil Matcher")
-    
-    st.session_state.hasil_analisis.sort(key=lambda x: int(x.get('score', 0)) if str(x.get('score', '0')).isdigit() else 0, reverse=True)
-    
-    df_rekap = pd.DataFrame([{
-        "Nama Kandidat": res.get('name', ''),
-        "Skor Kecocokan (%)": res.get('score', '0'),
-        "Summary Kecocokan": res.get('summary', ''),
-        "Missing Skills (Kekurangan)": res.get('missing_skills', '')
-    } for res in st.session_state.hasil_analisis])
-    
-    st.download_button(
-        label="📊 Download Tabel Rekap (CSV/Excel)",
-        data=df_rekap.to_csv(index=False).encode('utf-8'),
-        file_name="Rekap_ATS_CV_Matcher.csv",
-        mime="text/csv",
-    )
-    
-    for i, res in enumerate(st.session_state.hasil_analisis):
-        with st.expander(f"📋 {res['name']} - Skor: {res['score']}%"):
-            st.write(f"**Ringkasan AI:** {res['summary']}")
-            st.write(f"**Kekurangan:** {res.get('missing_skills', '-')}")
-            
-            pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['missing_skills']), str(res['cleaned_cv']))
-            st.download_button(label="📥 Download PDF", data=pdf_data, file_name=f"Report_{res['name']}.pdf", mime="application/pdf", key=f"btn_{i}")
+jd_
