@@ -6,8 +6,6 @@ import json
 from fpdf import FPDF
 
 # --- SETUP KONFIGURASI GEMINI ---
-# Masukkan API Key Gemini gratisan lo di sini
-# (Di versi production, ini bisa disimpan di Streamlit Secrets agar aman)
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
@@ -16,7 +14,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 class CVReportPDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
-        self.set_text_color(139, 90, 43) # Earth Tone Brown
+        self.set_text_color(139, 90, 43)
         self.cell(0, 10, 'ATS Screening Report - Confidential', 0, 1, 'R')
         self.ln(5)
 
@@ -27,27 +25,51 @@ class CVReportPDF(FPDF):
         self.cell(0, 10, f'Halaman {self.page_no()}', 0, 0, 'C')
 
 def create_pdf(candidate_name, score, summary, cleaned_cv):
-    # --- PEMBERSIH KARAKTER KHUSUS ---
+    # Pembersih Karakter agar tidak Error saat cetak PDF
     def clean_text(text):
         if not isinstance(text, str): return ""
-        # Ubah simbol fancy jadi standar
         reps = {'•': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '\n': '\n'}
         for k, v in reps.items(): text = text.replace(k, v)
-        # Paksa buang sisa karakter yang gak dikenali PDF (seperti emoji)
         return text.encode('latin-1', 'ignore').decode('latin-1')
     
-    # Bersihkan teks sebelum dicetak
     summary = clean_text(summary)
     cleaned_cv = clean_text(cleaned_cv)
-    # ----------------------------------
+    candidate_name = clean_text(candidate_name)
 
     pdf = CVReportPDF()
     
-    # Halaman 1: Skor & Summary
+    # Halaman 1
     pdf.add_page()
-# ... (biarkan sisa kodenya ke bawah tetap sama) ...
+    pdf.set_font('Arial', 'B', 20)
+    pdf.set_text_color(62, 39, 35)
+    pdf.cell(0, 15, f"Kandidat: {candidate_name}", 0, 1, 'L')
+    
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(139, 90, 43)
+    pdf.cell(0, 12, f"Tingkat Kecocokan: {score}%", 0, 1, 'L')
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(62, 39, 35)
+    pdf.cell(0, 10, "Summary Penjelasan Kecocokan:", 0, 1, 'L')
+    
+    pdf.set_font('Arial', '', 11)
+    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 6, summary)
+    
+    # Halaman 2
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_text_color(62, 39, 35)
+    pdf.cell(0, 12, "Profil CV Kandidat (Rapi & Detail)", 0, 1, 'L')
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', '', 10)
+    pdf.multi_cell(0, 5, cleaned_cv)
+    
+    return pdf.output(dest='S').encode('latin1')
 
-# --- FUNGSI EKSTRAKSI PDF ---
+# --- FUNGSI BACA PDF ---
 def extract_text_from_pdf(uploaded_file):
     pdf_reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
@@ -58,116 +80,53 @@ def extract_text_from_pdf(uploaded_file):
 # --- TAMPILAN UTAMA WEB ---
 st.title("🗂️ EarthTone ATS - CV Matcher")
 st.subheader("Cek kecocokan CV kandidat dengan Requirement posisi")
-st.write("Aplikasi ini gratis dan bisa memproses hingga maksimal 30 CV sekaligus.")
-
 st.markdown("---")
 
-# Input 1: JD dan Requirement
 st.header("1. Ketentuan Lowongan")
-jd_text = st.text_area("Paste Job Description & Requirements di sini:", height=200, 
-                      placeholder="Contoh: Dicari Social Media Specialist, Ahli CapCut, Pengalaman 2 tahun...")
+jd_text = st.text_area("Paste Job Description & Requirements di sini:", height=200)
 
-# Input 2: Upload Banyak CV (Max 30)
 st.header("2. Upload CV Kandidat")
-uploaded_cvs = st.file_uploader("Pilih file-file CV (Format PDF, Maksimal 30 file)", 
-                                type=["pdf"], accept_multiple_files=True)
+uploaded_cvs = st.file_uploader("Pilih file-file CV (Format PDF, Maksimal 30 file)", type=["pdf"], accept_multiple_files=True)
 
-# Validasi Jumlah CV
+# Memori Penyimpanan agar Data tidak hilang saat Refresh/Download
+if 'proses_selesai' not in st.session_state:
+    st.session_state.proses_selesai = False
+    st.session_state.hasil_analisis = []
+
+# --- LOGIKA PROSES AI ---
 if uploaded_cvs and len(uploaded_cvs) > 30:
-    st.error(f"🚨 Kebanyakan bos! Lo mengupload {len(uploaded_cvs)} CV. Maksimal cuma bisa 30 CV sekali cek.")
+    st.error("🚨 Maksimal 30 CV sekali cek.")
 elif uploaded_cvs and jd_text:
-    st.success(f"✅ {len(uploaded_cvs)} CV siap dianalisis.")
-    
     if st.button("Mulai Proses Analisis 🚀"):
+        st.session_state.hasil_analisis = [] # Kosongkan memori lama
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
-        # Tempat menampung hasil
-        results = []
         
         for index, cv_file in enumerate(uploaded_cvs):
             status_text.text(f"Sedang menganalisis ({index+1}/{len(uploaded_cvs)}): {cv_file.name}...")
             
-            # 1. Baca teks CV
             cv_text = extract_text_from_pdf(cv_file)
-            
-            # 2. Setup Prompt AI dengan output wajib JSON agar tidak gagal parsing
-            prompt = f"""
-            Anda adalah sistem ATS profesional. Bandingkan Job Description (JD) dengan CV berikut.
-            
-            JOB DESCRIPTION:
-            {jd_text}
-            
-            CV KANDIDAT:
-            {cv_text}
-            
-            Berikan respons dalam format JSON mentah murni (tanpa markdown, tanpa ```json) dengan struktur persis seperti ini:
-            {{
-                "score": "masukkan angka persentase kecocokan saja tanpa simbol persen, contoh: 85",
-                "summary": "jelaskan secara detail dalam bahasa Indonesia mengapa cocok/tidak cocok",
-                "cleaned_cv": "susun ulang dan rapikan isi CV kandidat ini menjadi sangat terstruktur, rapi, clear, dan mendetail"
-            }}
+            prompt = f"""Anda adalah sistem ATS. Bandingkan JD dengan CV berikut.
+            JOB DESCRIPTION: {jd_text}
+            CV KANDIDAT: {cv_text}
+            Berikan respons MURNI format JSON seperti ini: {{"score": "85", "summary": "alasan detail", "cleaned_cv": "isi cv rapi"}}
             """
             
             try:
-                # 3. Panggil Gemini AI dengan Mode Paksa JSON
                 response = model.generate_content(
                     prompt,
                     generation_config={"response_mime_type": "application/json"}
                 )
                 
-                # Pembersih Teks Ekstra (Jaga-jaga kalau AI bandel)
+                # Pembersihan Teks JSON
                 raw_text = response.text.strip()
-                if raw_text.startswith("```json"): 
-                    raw_text = raw_text[7:]
-                elif raw_text.startswith("```"): 
-                    raw_text = raw_text[3:]
-                if raw_text.endswith("```"): 
-                    raw_text = raw_text[:-3]
-                
-                # Parsing ke format JSON
-                res_json = json.loads(raw_text.strip())
-                
-                # Simpan Hasil
-                res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
-                results.append(res_json)
-                
-            except Exception as e:
-                # Fallback aman jika AI lemot / error format
-                results.append({
-                    "name": cv_file.name,
-                    "score": "0",
-                    "summary": f"Gagal menganalisis secara otomatis. Error: {str(e)}",
-                    "cleaned_cv": "Data tidak dapat dirapikan."
-                })
-            
-            # Jeda 4 detik per CV biar tidak terkena limit kuota gratisan Gemini (Rate Limit)
-            time.sleep(4)
-            progress_bar.progress((index + 1) / len(uploaded_cvs))
-            
-        status_text.text("✅ Analisis Selesai!")
-        
-        # --- MENAMPILKAN HASIL DI LAYAR WEB ---
-        st.markdown("---")
-        st.header("📊 Hasil Pengecekan")
-        
-      # --- MENAMPILKAN HASIL DI LAYAR WEB ---
-        st.markdown("---")
-        st.header("📊 Hasil Pengecekan")
-        
-        # Gunakan enumerate untuk bikin ID unik (i)
-        for i, res in enumerate(results):
-            with st.expander(f"📋 {res['name']} - Kecocokan: {res['score']}%"):
-                st.write(f"**Persentase:** {res['score']}%")
-                st.write(f"**Alasan:** {res['summary']}")
-                
-                # Generate PDF (dibungkus str() jaga-jaga kalau formatnya beda)
-                pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['cleaned_cv']))
-                
-                st.download_button(
-                    label=f"📥 Download PDF Laporan {res['name']}",
-                    data=pdf_data,
-                    file_name=f"Laporan_ATS_{res['name']}.pdf",
-                    mime="application/pdf",
-                    key=f"download_btn_{i}"  # <--- INI KUNCI PENYELAMATNYA
-                )
+                if raw_text.startswith("
+http://googleusercontent.com/immersive_entry_chip/0
+http://googleusercontent.com/immersive_entry_chip/1
+http://googleusercontent.com/immersive_entry_chip/2
+
+4. Klik tombol hijau **Commit changes...** dan simpan.
+
+Tunggu *loading* 10 detik di web lo. Sekarang kodenya udah rapi struktur posisinya. Lo bisa langsung sikat masukin banyak CV sekaligus. Begitu semuanya selesai dibaca, hasilnya bakal berderet ke bawah dan bisa lo *download* satu-satu tanpa *error* dan tanpa hilang. 
+
+Sekali lagi *sorry* banget bikin lo bolak-balik bos! Kalo udah jalan lancar, sikat buat ngerjain kerjaan HRD lo!
