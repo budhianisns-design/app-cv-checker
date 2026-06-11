@@ -6,6 +6,13 @@ import json
 import pandas as pd
 from fpdf import FPDF
 
+# --- UBAH LAYOUT JADI WIDE / FULL SCREEN ---
+st.set_page_config(page_title="CV Matcher - Elabram", layout="wide")
+
+# --- SETUP KONFIGURASI GEMINI ---
+GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+# ... (biarkan sisa kodenya ke bawah tetap sama persis) ...
+
 # --- SETUP KONFIGURASI GEMINI ---
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
