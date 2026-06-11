@@ -118,15 +118,47 @@ elif uploaded_cvs and jd_text:
                     generation_config={"response_mime_type": "application/json"}
                 )
                 
-                # Pembersihan Teks JSON
+                # Pembersihan Teks JSON yang kebal error copy-paste
+                md_tick = chr(96) * 3  # Menghasilkan simbol backtick
                 raw_text = response.text.strip()
-                if raw_text.startswith("
-http://googleusercontent.com/immersive_entry_chip/0
-http://googleusercontent.com/immersive_entry_chip/1
-http://googleusercontent.com/immersive_entry_chip/2
+                raw_text = raw_text.replace(f"{md_tick}json", "").replace(md_tick, "").strip()
+                
+                res_json = json.loads(raw_text)
+                res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
+                
+                # Simpan ke Memori
+                st.session_state.hasil_analisis.append(res_json)
+                
+            except Exception as e:
+                st.session_state.hasil_analisis.append({
+                    "name": cv_file.name,
+                    "score": "0",
+                    "summary": f"Error memproses AI: {str(e)}",
+                    "cleaned_cv": "Gagal dirapikan."
+                })
+            
+            time.sleep(4) # Jeda agar AI Google gratisan tidak kena limit
+            progress_bar.progress((index + 1) / len(uploaded_cvs))
+            
+        status_text.text("✅ Analisis Semua CV Selesai!")
+        st.session_state.proses_selesai = True
 
-4. Klik tombol hijau **Commit changes...** dan simpan.
-
-Tunggu *loading* 10 detik di web lo. Sekarang kodenya udah rapi struktur posisinya. Lo bisa langsung sikat masukin banyak CV sekaligus. Begitu semuanya selesai dibaca, hasilnya bakal berderet ke bawah dan bisa lo *download* satu-satu tanpa *error* dan tanpa hilang. 
-
-Sekali lagi *sorry* banget bikin lo bolak-balik bos! Kalo udah jalan lancar, sikat buat ngerjain kerjaan HRD lo!
+# --- LOGIKA TAMPILAN HASIL (Di luar Loop Proses) ---
+if st.session_state.proses_selesai:
+    st.markdown("---")
+    st.header("📊 Hasil Pengecekan")
+    
+    for i, res in enumerate(st.session_state.hasil_analisis):
+        with st.expander(f"📋 {res['name']} - Kecocokan: {res['score']}%"):
+            st.write(f"**Persentase:** {res['score']}%")
+            st.write(f"**Alasan:** {res['summary']}")
+            
+            pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['cleaned_cv']))
+            
+            st.download_button(
+                label=f"📥 Download PDF Laporan {res['name']}",
+                data=pdf_data,
+                file_name=f"Laporan_{res['name']}.pdf",
+                mime="application/pdf",
+                key=f"dl_btn_{i}"
+            )
