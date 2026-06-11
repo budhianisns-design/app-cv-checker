@@ -3,12 +3,21 @@ import google.generativeai as genai
 import PyPDF2
 import time
 import json
+import pandas as pd
 from fpdf import FPDF
 
 # --- SETUP KONFIGURASI GEMINI ---
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
+
+# --- DATABASE TEMPLATE JOB DESCRIPTION ---
+JD_TEMPLATES = {
+    "Custom / Upload Manual": "",
+    "Digital Marketing Specialist": "Mencari Digital Marketing Specialist. Syarat: Pengalaman minimal 2 tahun, menguasai Meta Ads, Google Ads, SEO, SEM, dan Google Analytics. Mampu membuat laporan performa campaign dan memiliki skill copywriting yang baik.",
+    "Software Engineer (Python)": "Syarat Backend Engineer: Minimal pengalaman 3 tahun dengan Python (Django/FastAPI). Menguasai PostgreSQL, Git, Docker, dan pembuatan RESTful API. Memahami arsitektur microservices adalah nilai plus.",
+    "Sales Executive / Manager": "Dibutuhkan Sales dengan pengalaman B2B minimal 4 tahun. Target-oriented, memiliki skill komunikasi & negosiasi tingkat tinggi, fasih berbahasa Inggris, dan mampu membangun hubungan dengan klien enterprise."
+}
 
 # --- KLAS UNTUK GENERATE PDF ---
 class CVReportPDF(FPDF):
@@ -24,7 +33,7 @@ class CVReportPDF(FPDF):
         self.set_text_color(120, 120, 120)
         self.cell(0, 10, f'Halaman {self.page_no()}', 0, 0, 'C')
 
-def create_pdf(candidate_name, score, summary, cleaned_cv):
+def create_pdf(candidate_name, score, summary, missing_skills, cleaned_cv):
     def clean_text(text):
         if not isinstance(text, str): return ""
         reps = {'•': '-', '–': '-', '—': '-', '‘': "'", '’': "'", '“': '"', '”': '"', '\n': '\n'}
@@ -32,11 +41,13 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
         return text.encode('latin-1', 'ignore').decode('latin-1')
     
     summary = clean_text(summary)
+    missing_skills = clean_text(missing_skills)
     cleaned_cv = clean_text(cleaned_cv)
     candidate_name = clean_text(candidate_name)
 
     pdf = CVReportPDF()
     
+    # Halaman 1: Summary & Kelemahan
     pdf.add_page()
     pdf.set_font('Arial', 'B', 20)
     pdf.set_text_color(62, 39, 35)
@@ -49,12 +60,20 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
     
     pdf.set_font('Arial', 'B', 12)
     pdf.set_text_color(62, 39, 35)
-    pdf.cell(0, 10, "Summary Penjelasan Kecocokan:", 0, 1, 'L')
-    
+    pdf.cell(0, 8, "Summary Kecocokan:", 0, 1, 'L')
     pdf.set_font('Arial', '', 11)
     pdf.set_text_color(0, 0, 0)
     pdf.multi_cell(0, 6, summary)
+    pdf.ln(3)
+
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_text_color(200, 50, 50) # Warna kemerahan untuk bagian missing skills
+    pdf.cell(0, 8, "Requirement yang TIDAK Ditemukan di CV (Missing Skills):", 0, 1, 'L')
+    pdf.set_font('Arial', '', 11)
+    pdf.set_text_color(0, 0, 0)
+    pdf.multi_cell(0, 6, missing_skills)
     
+    # Halaman 2: Cleaned CV
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(62, 39, 35)
@@ -71,8 +90,7 @@ def extract_text_from_pdf(uploaded_file):
     text = ""
     for page in pdf_reader.pages:
         extracted = page.extract_text()
-        if extracted:
-            text += extracted
+        if extracted: text += extracted
     return text
 
 # --- TAMPILAN UTAMA WEB ---
@@ -82,14 +100,18 @@ st.markdown("---")
 
 # 1. JOB DESCRIPTION SECTION
 st.header("1. Job Description")
-jd_file = st.file_uploader("Upload dokumen Job Description (Opsional, format PDF)", type=["pdf"])
 
-# Otomatis isi kotak teks jika file diupload
-jd_default_text = ""
+# Fitur Template
+selected_template = st.selectbox("Pilih Template Posisi (Atau pilih Custom untuk isi sendiri):", list(JD_TEMPLATES.keys()))
+jd_default_text = JD_TEMPLATES[selected_template]
+
+# Fitur Upload JD
+jd_file = st.file_uploader("Atau Upload dokumen Job Description (Opsional, Format PDF)", type=["pdf"])
 if jd_file is not None:
     jd_default_text = extract_text_from_pdf(jd_file)
     st.success("Teks Job Description berhasil diekstrak! Silakan cek/edit di kotak bawah.")
 
+# Kotak Teks Akhir
 jd_text = st.text_area("Detail Job Description & Requirements:", value=jd_default_text, height=150, 
                        placeholder="Ketik manual atau upload dokumen PDF di atas...")
 
@@ -114,10 +136,12 @@ elif uploaded_cvs and jd_text:
             status_text.text(f"Menganalisis ({index+1}/{len(uploaded_cvs)}): {cv_file.name}...")
             
             cv_text = extract_text_from_pdf(cv_file)
-            prompt = f"""Anda adalah sistem ATS. Bandingkan JD dengan CV berikut.
+            # PROMPT DIUPDATE dengan tambahan "missing_skills"
+            prompt = f"""Anda adalah sistem ATS HRD yang ketat. Bandingkan JD dengan CV berikut.
             JOB DESCRIPTION: {jd_text}
             CV KANDIDAT: {cv_text}
-            Berikan respons MURNI format JSON seperti ini: {{"score": "85", "summary": "alasan detail", "cleaned_cv": "isi cv rapi"}}
+            Berikan respons MURNI format JSON persis seperti struktur ini: 
+            {{"score": "85", "summary": "alasan detail kenapa cocok", "missing_skills": "sebutkan requirement dari JD yang TIDAK ADA atau kurang di CV kandidat ini", "cleaned_cv": "isi cv kandidat yang disusun ulang sangat rapi dan lengkap"}}
             """
             
             sukses = False
@@ -145,6 +169,7 @@ elif uploaded_cvs and jd_text:
                             "name": cv_file.name,
                             "score": "0",
                             "summary": f"Error memproses AI: {error_msg}",
+                            "missing_skills": "Tidak dapat dianalisa.",
                             "cleaned_cv": "Gagal dirapikan."
                         })
                         sukses = True 
@@ -155,6 +180,7 @@ elif uploaded_cvs and jd_text:
                     "name": cv_file.name,
                     "score": "0",
                     "summary": "Gagal diproses karena limit harian API Google (Versi Free) habis.",
+                    "missing_skills": "Tidak dapat dianalisa.",
                     "cleaned_cv": "Gagal dirapikan."
                 })
 
@@ -169,18 +195,45 @@ if st.session_state.proses_selesai:
     st.markdown("---")
     st.header("📊 Rekap Hasil Matcher")
     
-    # Otomatis mengurutkan dari skor paling tinggi
+    # Auto-Sorting dari Skor Tertinggi
     st.session_state.hasil_analisis.sort(key=lambda x: int(x.get('score', 0)) if str(x.get('score', '0')).isdigit() else 0, reverse=True)
+    
+    # FITUR 1: DOWNLOAD EXCEL / CSV REKAPAN
+    df_rekap = pd.DataFrame([{
+        "Nama Kandidat": res.get('name', ''),
+        "Skor Kecocokan (%)": res.get('score', '0'),
+        "Summary Kecocokan": res.get('summary', ''),
+        "Missing Skills (Kekurangan)": res.get('missing_skills', 'Tidak ada data')
+    } for res in st.session_state.hasil_analisis])
+    
+    csv_data = df_rekap.to_csv(index=False).encode('utf-8')
+    
+    st.success("Tabel rekapitulasi semua kandidat siap didownload!")
+    st.download_button(
+        label="📊 Download Tabel Rekap (CSV/Excel)",
+        data=csv_data,
+        file_name="Rekap_ATS_CV_Matcher.csv",
+        mime="text/csv",
+    )
+    
+    st.markdown("### Detail Tiap Kandidat")
     
     for i, res in enumerate(st.session_state.hasil_analisis):
         with st.expander(f"📋 {res['name']} - Skor: {res['score']}%"):
             st.write(f"**Persentase Kecocokan:** {res['score']}%")
             st.write(f"**Ringkasan AI:** {res['summary']}")
+            st.write(f"**Kekurangan (Missing Skills):** {res.get('missing_skills', 'Aman / Tidak terdeteksi')}")
             
-            pdf_data = create_pdf(str(res['name']), str(res['score']), str(res['summary']), str(res['cleaned_cv']))
+            pdf_data = create_pdf(
+                str(res.get('name', '')), 
+                str(res.get('score', '0')), 
+                str(res.get('summary', '')), 
+                str(res.get('missing_skills', '-')),
+                str(res.get('cleaned_cv', ''))
+            )
             
             st.download_button(
-                label=f"📥 Download Report {res['name']}.pdf",
+                label=f"📥 Download Report PDF {res['name']}",
                 data=pdf_data,
                 file_name=f"Report_CV_Matcher_{res['name']}.pdf",
                 mime="application/pdf",
