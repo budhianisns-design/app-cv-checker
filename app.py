@@ -112,32 +112,53 @@ elif uploaded_cvs and jd_text:
             Berikan respons MURNI format JSON seperti ini: {{"score": "85", "summary": "alasan detail", "cleaned_cv": "isi cv rapi"}}
             """
             
-            try:
-                response = model.generate_content(
-                    prompt,
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                
-                # Pembersihan Teks JSON yang kebal error copy-paste
-                md_tick = chr(96) * 3  # Menghasilkan simbol backtick
-                raw_text = response.text.strip()
-                raw_text = raw_text.replace(f"{md_tick}json", "").replace(md_tick, "").strip()
-                
-                res_json = json.loads(raw_text)
-                res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
-                
-                # Simpan ke Memori
-                st.session_state.hasil_analisis.append(res_json)
-                
-            except Exception as e:
+            sukses = False
+            # Sistem Antre (Retry) maksimal 3 kali jika kena limit Google
+            for attempt in range(3):
+                try:
+                    response = model.generate_content(
+                        prompt,
+                        generation_config={"response_mime_type": "application/json"}
+                    )
+                    
+                    # Pembersihan Teks JSON yang kebal error copy-paste
+                    md_tick = chr(96) * 3  # Menghasilkan simbol backtick
+                    raw_text = response.text.strip()
+                    raw_text = raw_text.replace(f"{md_tick}json", "").replace(md_tick, "").strip()
+                    
+                    res_json = json.loads(raw_text)
+                    res_json['name'] = cv_file.name.replace(".pdf", "").replace(".PDF", "")
+                    
+                    # Simpan ke Memori
+                    st.session_state.hasil_analisis.append(res_json)
+                    sukses = True
+                    break # Berhasil, keluar dari loop antrean
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    # Jika error karena Limit (429) dari versi gratisan Google
+                    if "429" in error_msg or "quota" in error_msg.lower():
+                        status_text.text(f"⏳ Ups, server Google membatasi versi gratis. Otomatis istirahat 60 detik sebelum lanjut (CV {index+1})...")
+                        time.sleep(60) # Tunggu 1 menit lalu coba loop lagi
+                    else:
+                        st.session_state.hasil_analisis.append({
+                            "name": cv_file.name,
+                            "score": "0",
+                            "summary": f"Error memproses AI: {error_msg}",
+                            "cleaned_cv": "Gagal dirapikan."
+                        })
+                        sukses = True # Error di luar limit, anggap selesai biar lanjut ke CV lain
+                        break
+            
+            if not sukses:
                 st.session_state.hasil_analisis.append({
                     "name": cv_file.name,
                     "score": "0",
-                    "summary": f"Error memproses AI: {str(e)}",
+                    "summary": "Gagal diproses karena limit API Google terlalu sering (Versi Free).",
                     "cleaned_cv": "Gagal dirapikan."
                 })
-            
-            time.sleep(4) # Jeda agar AI Google gratisan tidak kena limit
+
+            time.sleep(6) # Jeda kita naikkan jadi 6 detik per CV biar makin aman dari tilang Google
             progress_bar.progress((index + 1) / len(uploaded_cvs))
             
         status_text.text("✅ Analisis Semua CV Selesai!")
