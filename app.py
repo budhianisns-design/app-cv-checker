@@ -141,6 +141,10 @@ button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] butto
     background-color: #FFFFFF !important;
     font-weight: bold !important;
 }
+/* Spesifik memaksa teks tombol "Browse files" di dalam kotak upload menjadi hitam */
+[data-testid="stFileUploaderDropzone"] button * {
+    color: #000000 !important;
+}
 
 /* 5. Efek shadow tebal dan halus untuk kotak logo putih Elabram */
 [data-testid="stImage"] img {
@@ -158,6 +162,25 @@ button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] butto
 }
 </style>
 """, unsafe_allow_html=True)
+
+# --- TAMPILAN UTAMA WEB ---
+col1, col2 = st.columns([1, 4]) # Kolom kiri buat logo, kanan buat judul
+
+with col1:
+    # Trik Anti-Error pemanggilan file lokal logo Elabram
+    try:
+        st.image("logo elabram.jpg", width=200)
+    except:
+        try:
+            st.image("logo_elabram.jpg", width=200)
+        except:
+            st.error("File logo belum ter-upload di GitHub.")
+
+with col2:
+    st.markdown("<h1 class='navy-title'>CV Matcher</h1>", unsafe_allow_html=True)
+    st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
+
+st.divider()
 
 # --- TAMPILAN UTAMA WEB ---
 col1, col2 = st.columns([1, 4]) # Kolom kiri buat logo, kanan buat judul
