@@ -1,6 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
-import pypdf2
+import PyPDF2
 import time
 import json
 from fpdf import FPDF
@@ -62,7 +62,7 @@ def create_pdf(candidate_name, score, summary, cleaned_cv):
 
 # --- FUNGSI EKSTRAKSI PDF ---
 def extract_text_from_pdf(uploaded_file):
-    pdf_reader = pypdf2.PdfReader(uploaded_file)
+    pdf_reader = PyPDF2.PdfReader(uploaded_file)
     text = ""
     for page in pdf_reader.pages:
         text += page.extract_text()
