@@ -5,15 +5,15 @@ import json
 import pandas as pd
 from fpdf import FPDF
 
-# --- CONFIG LAYOUT WIDE ---
+# --- SETUP KONFIGURASI LAYOUT UTAMA ---
 st.set_page_config(page_title="CV Matcher - Elabram", layout="wide")
 
-# --- SETUP API GEMINI ---
+# --- KONEKSI KE API GEMINI ---
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
-# --- DATABASE TEMPLATE JOB DESCRIPTION ---
+# --- DATA TEMPLATE JOB DESCRIPTION ---
 JD_TEMPLATES = {
     "Custom / Upload Manual": "",
     "Digital Marketing Specialist": "Mencari Digital Marketing Specialist. Syarat: Pengalaman minimal 2 tahun, menguasai Meta Ads, Google Ads, SEO, SEM, dan Google Analytics.",
@@ -21,7 +21,7 @@ JD_TEMPLATES = {
     "Sales Executive / Manager": "Dibutuhkan Sales dengan pengalaman B2B minimal 4 tahun. Target-oriented, memiliki skill komunikasi & negosiasi tingkat tinggi."
 }
 
-# --- HEADER TAMPILAN UTAMA ---
+# --- BAGIAN HEADER & LOGO PERUSAHAAN ---
 col1, col2 = st.columns([1, 4])
 with col1:
     try:
@@ -30,15 +30,15 @@ with col1:
         try:
             st.image("logo_elabram.jpg", width=180)
         except:
-            st.write("Logo Elabram")
+            st.subheader("Elabram Logo")
 
 with col2:
     st.title("CV Matcher")
-    st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
+    st.write("Sistem Cerdas Pengecekan Requirement & Screening CV")
 
 st.divider()
 
-# --- FUNGSI PARSING & GENERATOR PDF ---
+# --- UTILITY UNTUK PRINT REPORT PDF ---
 class CVReportPDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -73,25 +73,4 @@ def create_pdf(candidate_name, score, summary, missing_skills, cleaned_cv):
     pdf.ln(3)
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 8, "Requirement yang TIDAK Ditemukan di CV (Missing Skills):", 0, 1, 'L')
-    pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 6, missing_skills)
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 12, "Profil CV Kandidat (Rapi & Detail)", 0, 1, 'L')
-    pdf.ln(5)
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 5, cleaned_cv)
-    return pdf.output(dest='S').encode('latin1')
-
-def extract_text_from_pdf(uploaded_file):
-    pdf_reader = PyPDF2.PdfReader(uploaded_file)
-    text = ""
-    for page in pdf_reader.pages:
-        extracted = page.extract_text()
-        if extracted: text += extracted
-    return text
-
-# --- CACHING PROSES AI ---
-@st.cache_data(show_spinner=False)
-def panggil_ai_gemini(jd, cv):
-    prompt = f"Bandingkan JD dengan CV berikut. JD: {jd} \\n CV: {cv} \\n Berikan respons MURNI format JSON persis seperti struktur ini: {{\"score\": \"85\", \"summary\": \"alasan cocok\", \"missing_skills\": \"kekurangan di cv\", \"cleaned_cv\": \"isi cv rapi\"}}"
+    pdf.set_font('Arial', '', 11
