@@ -141,8 +141,8 @@ button, p button, .stButton button, [data-testid="stFileUploaderDropzone"] butto
     background-color: #FFFFFF !important;
     font-weight: bold !important;
 }
-/* Spesifik memaksa teks tombol "Browse files" di dalam kotak upload menjadi hitam */
-[data-testid="stFileUploaderDropzone"] button * {
+/* Spesifik memaksa teks tombol upload dan tulisan "200MB per file" di dalam kotak upload menjadi hitam */
+[data-testid="stFileUploaderDropzone"] button *, [data-testid="stFileUploaderDropzone"] div, [data-testid="stFileUploaderDropzone"] span {
     color: #000000 !important;
 }
 
