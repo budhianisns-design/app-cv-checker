@@ -10,7 +10,7 @@ from fpdf import FPDF
 # (Di versi production, ini bisa disimpan di Streamlit Secrets agar aman)
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- KLAS UNTUK GENERATE PDF ---
 class CVReportPDF(FPDF):
