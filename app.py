@@ -94,7 +94,18 @@ def extract_text_from_pdf(uploaded_file):
     return text
 
 # --- TAMPILAN UTAMA WEB ---
-st.title("🗂️ CV Matcher - Automation")
+col1, col2 = st.columns([1, 8]) # Membagi layar jadi 2 kolom (kiri kecil, kanan lebar)
+
+with col1:
+    # Sementara gue pakai logo inisial "E" yang warnanya udah dicocokin sama tema Navy-Gold.
+    # Kalau lo mau pakai logo asli Elabram, tinggal ganti URL di bawah ini sama link gambar logonya.
+    # Atau upload file logo aslinya ke GitHub lo, lalu ganti jadi: st.image("logo_elabram.png", width=70)
+    st.image("https://ui-avatars.com/api/?name=Elabram&background=FBBF24&color=0F172A&size=128&bold=true", width=70)
+
+with col2:
+    # CSS ini biar posisi judulnya sejajar rapi dengan tengah-tengah logo
+    st.markdown("<h1 style='margin-top: -15px;'>CV Matcher</h1>", unsafe_allow_html=True)
+
 st.subheader("Sistem Cerdas Pengecekan Requirement & Screening CV")
 st.markdown("---")
 
